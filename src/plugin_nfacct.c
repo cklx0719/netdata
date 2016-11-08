@@ -89,11 +89,11 @@ void *nfacct_main(void *ptr) {
 
     // ------------------------------------------------------------------------
 
-    struct timeval last, now;
+    struct timespec last, now;
     unsigned long long usec = 0, susec = 0;
     RRDSET *st = NULL;
 
-    gettimeofday(&last, NULL);
+    netdata_gettime(&last);
 
     // ------------------------------------------------------------------------
 
@@ -131,7 +131,7 @@ void *nfacct_main(void *ptr) {
 
         // --------------------------------------------------------------------
 
-        gettimeofday(&now, NULL);
+        netdata_gettime(&now);
         usec = usec_dt(&now, &last) - susec;
         debug(D_NFACCT_LOOP, "nfacct.plugin: last loop took %llu usec (worked for %llu, sleeped for %llu).", usec + susec, usec, susec);
 
@@ -188,7 +188,7 @@ void *nfacct_main(void *ptr) {
         usleep(susec);
 
         // copy current to last
-        memmove(&last, &now, sizeof(struct timeval));
+        memmove(&last, &now, sizeof(struct timespec));
     }
 
     mnl_socket_close(nl);

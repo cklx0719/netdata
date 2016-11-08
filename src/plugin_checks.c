@@ -2,7 +2,7 @@
 
 void *checks_main(void *ptr)
 {
-    if(ptr) { ; }
+    (void)ptr;
 
     info("CHECKS thread created with task id %d", gettid());
 
@@ -13,7 +13,8 @@ void *checks_main(void *ptr)
         error("Cannot set pthread cancel state to ENABLE.");
 
     unsigned long long usec = 0, susec = rrd_update_every * 1000000ULL, loop_usec = 0, total_susec = 0;
-    struct timeval now, last, loop;
+    unsigned long long now, last;
+    struct timespec loop;
 
     RRDSET *check1, *check2, *check3, *apps_cpu = NULL;
 
@@ -30,13 +31,13 @@ void *checks_main(void *ptr)
     rrddim_add(check3, "netdata", NULL, 1, 1, RRDDIM_ABSOLUTE);
     rrddim_add(check3, "apps.plugin", NULL, 1, 1, RRDDIM_ABSOLUTE);
 
-    gettimeofday(&last, NULL);
+    last = time_usec();
     while(1) {
-        usleep(susec);
+        sleep_usec(susec);
 
         // find the time to sleep in order to wait exactly update_every seconds
-        gettimeofday(&now, NULL);
-        loop_usec = usec_dt(&now, &last);
+        now = time_usec();
+        loop_usec = now - last;
         usec = loop_usec - susec;
         debug(D_PROCNETDEV_LOOP, "CHECK: last loop took %llu usec (worked for %llu, sleeped for %llu).", loop_usec, usec, susec);
 
@@ -46,8 +47,7 @@ void *checks_main(void *ptr)
         // --------------------------------------------------------------------
         // Calculate loop time
 
-        last.tv_sec = now.tv_sec;
-        last.tv_usec = now.tv_usec;
+        last = now;
         total_susec += loop_usec;
 
         // --------------------------------------------------------------------
@@ -71,7 +71,7 @@ void *checks_main(void *ptr)
 
         if(!apps_cpu) apps_cpu = rrdset_find("apps.cpu");
         if(check3->counter_done) rrdset_next_usec(check3, loop_usec);
-        gettimeofday(&loop, NULL);
+        netdata_gettime(&loop);
         rrddim_set(check3, "caller", (long long) usec_dt(&loop, &check1->last_collected_time));
         rrddim_set(check3, "netdata", (long long) usec_dt(&loop, &check2->last_collected_time));
         if(apps_cpu) rrddim_set(check3, "apps.plugin", (long long) usec_dt(&loop, &apps_cpu->last_collected_time));

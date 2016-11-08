@@ -410,9 +410,9 @@ void rrdset_reset(RRDSET *st)
     debug(D_RRD_CALLS, "rrdset_reset() %s", st->name);
 
     st->last_collected_time.tv_sec = 0;
-    st->last_collected_time.tv_usec = 0;
+    st->last_collected_time.tv_nsec = 0;
     st->last_updated.tv_sec = 0;
-    st->last_updated.tv_usec = 0;
+    st->last_updated.tv_nsec = 0;
     st->current_entry = 0;
     st->counter = 0;
     st->counter_done = 0;
@@ -420,7 +420,7 @@ void rrdset_reset(RRDSET *st)
     RRDDIM *rd;
     for(rd = st->dimensions; rd ; rd = rd->next) {
         rd->last_collected_time.tv_sec = 0;
-        rd->last_collected_time.tv_usec = 0;
+        rd->last_collected_time.tv_nsec = 0;
         rd->counter = 0;
         memset(rd->values, 0, rd->entries * sizeof(storage_number));
     }
@@ -571,7 +571,7 @@ RRDSET *rrdset_create(const char *type, const char *id, const char *name, const 
     st->red = NAN;
 
     st->last_collected_time.tv_sec = 0;
-    st->last_collected_time.tv_usec = 0;
+    st->last_collected_time.tv_nsec = 0;
     st->counter_done = 0;
 
     st->gap_when_lost_iterations_above = (int) (
@@ -631,8 +631,8 @@ RRDDIM *rrddim_add(RRDSET *st, const char *id, const char *name, long multiplier
     snprintfz(fullfilename, FILENAME_MAX, "%s/%s.db", st->cache_dir, filename);
     if(rrd_memory_mode != RRD_MEMORY_MODE_RAM) rd = (RRDDIM *)mymmap(fullfilename, size, ((rrd_memory_mode == RRD_MEMORY_MODE_MAP)?MAP_SHARED:MAP_PRIVATE), 1);
     if(rd) {
-        struct timeval now;
-        gettimeofday(&now, NULL);
+        struct timespec now;
+        netdata_gettime(&now);
 
         if(strcmp(rd->magic, RRDDIMENSION_MAGIC) != 0) {
             errno = 0;
@@ -727,7 +727,7 @@ RRDDIM *rrddim_add(RRDSET *st, const char *id, const char *name, long multiplier
     rd->last_stored_value = 0;
     rd->values[st->current_entry] = pack_storage_number(0, SN_NOT_EXISTS);
     rd->last_collected_time.tv_sec = 0;
-    rd->last_collected_time.tv_usec = 0;
+    rd->last_collected_time.tv_nsec = 0;
     rd->rrdset = st;
 
     // append this dimension
@@ -953,7 +953,7 @@ collected_number rrddim_set_by_pointer(RRDSET *st, RRDDIM *rd, collected_number 
 {
     debug(D_RRD_CALLS, "rrddim_set_by_pointer() for chart %s, dimension %s, value " COLLECTED_NUMBER_FORMAT, st->name, rd->name, value);
 
-    gettimeofday(&rd->last_collected_time, NULL);
+    netdata_gettime(&rd->last_collected_time);
     rd->collected_value = value;
     rd->updated = 1;
     rd->counter++;
@@ -985,8 +985,8 @@ void rrdset_next_usec_unfiltered(RRDSET *st, unsigned long long microseconds)
 
 void rrdset_next_usec(RRDSET *st, unsigned long long microseconds)
 {
-    struct timeval now;
-    gettimeofday(&now, NULL);
+    struct timespec now;
+    netdata_gettime(&now);
 
     if(unlikely(!st->last_collected_time.tv_sec)) {
         // the first entry
@@ -998,8 +998,8 @@ void rrdset_next_usec(RRDSET *st, unsigned long long microseconds)
     }
     else {
         // microseconds has the time since the last collection
-        unsigned long long now_usec = timeval_usec(&now);
-        unsigned long long last_usec = timeval_usec(&st->last_collected_time);
+        unsigned long long now_usec = timespec_usec(&now);
+        unsigned long long last_usec = timespec_usec(&st->last_collected_time);
         unsigned long long since_last_usec = usec_dt(&now, &st->last_collected_time);
 
         // verify the microseconds given is good
@@ -1078,8 +1078,8 @@ unsigned long long rrdset_done(RRDSET *st)
     if(unlikely(!st->last_collected_time.tv_sec)) {
         // it is the first entry
         // set the last_collected_time to now
-        gettimeofday(&st->last_collected_time, NULL);
-        last_collect_ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_usec - update_every_ut;
+        netdata_gettime(&st->last_collected_time);
+        last_collect_ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_nsec / 1000ULL - update_every_ut;
 
         // the first entry should not be stored
         store_this_entry = 0;
@@ -1090,10 +1090,10 @@ unsigned long long rrdset_done(RRDSET *st)
     else {
         // it is not the first entry
         // calculate the proper last_collected_time, using usec_since_last_update
-        last_collect_ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_usec;
+        last_collect_ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_nsec / 1000ULL;
         unsigned long long ut = last_collect_ut + st->usec_since_last_update;
         st->last_collected_time.tv_sec = (time_t) (ut / 1000000ULL);
-        st->last_collected_time.tv_usec = (suseconds_t) (ut % 1000000ULL);
+        st->last_collected_time.tv_nsec = (long)((ut % 1000000ULL) * 1000ULL);
     }
 
     // if this set has not been updated in the past
@@ -1101,9 +1101,9 @@ unsigned long long rrdset_done(RRDSET *st)
     if(unlikely(!st->last_updated.tv_sec)) {
         // it has never been updated before
         // set a fake last_updated, in the past using usec_since_last_update
-        unsigned long long ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_usec - st->usec_since_last_update;
+        unsigned long long ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_nsec / 1000ULL - st->usec_since_last_update;
         st->last_updated.tv_sec = (time_t) (ut / 1000000ULL);
-        st->last_updated.tv_usec = (suseconds_t) (ut % 1000000ULL);
+        st->last_updated.tv_nsec = (long)((ut % 1000000ULL) * 1000ULL);
 
         // the first entry should not be stored
         store_this_entry = 0;
@@ -1114,16 +1114,16 @@ unsigned long long rrdset_done(RRDSET *st)
 
     // check if we will re-write the entire data set
     if(unlikely(usec_dt(&st->last_collected_time, &st->last_updated) > st->entries * update_every_ut)) {
-        info("%s: too old data (last updated at %ld.%ld, last collected at %ld.%ld). Reseting it. Will not store the next entry.", st->name, st->last_updated.tv_sec, st->last_updated.tv_usec, st->last_collected_time.tv_sec, st->last_collected_time.tv_usec);
+        info("%s: too old data (last updated at %ld.%ld, last collected at %ld.%ld). Reseting it. Will not store the next entry.", st->name, st->last_updated.tv_sec, st->last_updated.tv_nsec / 1000, st->last_collected_time.tv_sec, st->last_collected_time.tv_nsec / 1000);
         rrdset_reset(st);
 
         st->usec_since_last_update = update_every_ut;
 
-        gettimeofday(&st->last_collected_time, NULL);
+        netdata_gettime(&st->last_collected_time);
 
-        unsigned long long ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_usec - st->usec_since_last_update;
+        unsigned long long ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_nsec / 1000ULL - st->usec_since_last_update;
         st->last_updated.tv_sec = (time_t) (ut / 1000000ULL);
-        st->last_updated.tv_usec = (suseconds_t) (ut % 1000000ULL);
+        st->last_updated.tv_nsec = (long)((ut % 1000000ULL) * 1000ULL);
 
         // the first entry should not be stored
         store_this_entry = 0;
@@ -1134,8 +1134,8 @@ unsigned long long rrdset_done(RRDSET *st)
     // last_stored_ut = the last time we added a value to the storage
     // now_collect_ut = the time the current value has been collected
     // next_store_ut  = the time of the next interpolation point
-    last_stored_ut = st->last_updated.tv_sec * 1000000ULL + st->last_updated.tv_usec;
-    now_collect_ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_usec;
+    last_stored_ut = st->last_updated.tv_sec * 1000000ULL + st->last_updated.tv_nsec / 1000ULL;
+    now_collect_ut = st->last_collected_time.tv_sec * 1000000ULL + st->last_collected_time.tv_nsec / 1000ULL;
     next_store_ut  = (st->last_updated.tv_sec + st->update_every) * 1000000ULL;
 
     if(unlikely(st->debug)) {
@@ -1351,7 +1351,7 @@ unsigned long long rrdset_done(RRDSET *st)
         }
 
         st->last_updated.tv_sec = (time_t) (next_store_ut / 1000000ULL);
-        st->last_updated.tv_usec = 0;
+        st->last_updated.tv_nsec = 0;
 
         for( rd = st->dimensions ; likely(rd) ; rd = rd->next ) {
             calculated_number new_value;

@@ -134,8 +134,10 @@
 #endif
 #define abs(x) ((x < 0)? -x : x)
 
-extern unsigned long long usec_dt(struct timeval *now, struct timeval *old);
-extern unsigned long long timeval_usec(struct timeval *tv);
+#define netdata_gettime(ts) clock_gettime(CLOCK_REALTIME, ts)
+extern unsigned long long time_nsec(void);
+extern unsigned long long usec_dt(struct timespec *now, struct timespec *old);
+extern unsigned long long timespec_usec(struct timespec *tv);
 
 // #define usec_dt(now, last) (((((now)->tv_sec * 1000000ULL) + (now)->tv_usec) - (((last)->tv_sec * 1000000ULL) + (last)->tv_usec)))
 

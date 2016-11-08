@@ -69,7 +69,7 @@ struct web_client {
     char decoded_url[URL_MAX + 1];  // we decode the URL in this buffer
     char last_url[URL_MAX+1];       // we keep a copy of the decoded URL here
 
-    struct timeval tv_in, tv_ready;
+    struct timespec tv_in, tv_ready;
 
     char cookie1[COOKIE_MAX+1];
     char cookie2[COOKIE_MAX+1];

@@ -124,8 +124,8 @@ void web_client_reset(struct web_client *w) {
     debug(D_WEB_CLIENT, "%llu: Reseting client.", w->id);
 
     if(likely(w->last_url[0])) {
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
+        struct timespec tv;
+        netdata_gettime(&tv);
 
         size_t size = (w->mode == WEB_CLIENT_MODE_FILECOPY)?w->response.rlen:w->response.data->len;
         size_t sent = size;
@@ -1917,7 +1917,7 @@ void web_client_process(struct web_client *w) {
 #endif
 
     // start timing us
-    gettimeofday(&w->tv_in, NULL);
+    netdata_gettime(&w->tv_in);
 
     if(unlikely(!hash_api)) {
         hash_api = simple_hash("api");
@@ -2127,7 +2127,7 @@ void web_client_process(struct web_client *w) {
         }
     }
 
-    gettimeofday(&w->tv_ready, NULL);
+    netdata_gettime(&w->tv_ready);
     w->response.sent = 0;
     w->response.code = code;
 

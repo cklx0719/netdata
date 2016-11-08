@@ -2754,7 +2754,7 @@ void *health_main(void *ptr) {
             rrdhost_rdlock(&localhost);
 
             for(rc = localhost.alarms; rc; rc = rc->next) {
-                if(unlikely(rc->rrdcalc_flags & RRDCALC_FLAG_RUNNABLE))
+                if(unlikely(!(rc->rrdcalc_flags & RRDCALC_FLAG_RUNNABLE)))
                     continue;
 
                 int warning_status  = RRDCALC_STATUS_UNDEFINED;
@@ -2877,7 +2877,19 @@ void *health_main(void *ptr) {
 
                     rc->delay_last = delay;
                     rc->delay_up_to_timestamp = now + delay;
-                    health_alarm_log(&localhost, rc->id, rc->next_event_id++, now, rc->name, rc->rrdset->id, rc->rrdset->family, rc->exec, rc->recipient, now - rc->last_status_change, rc->old_value, rc->value, rc->status, status, rc->source, rc->units, rc->info, rc->delay_last);
+                    health_alarm_log(&localhost,
+                            rc->id,
+                            rc->next_event_id++,
+                            now,
+                            rc->name,
+                            (rc->rrdset)?rc->rrdset->id:"NOCHART",
+                            (rc->rrdset && rc->rrdset->family)?rc->rrdset->family:"NOFAMILY",
+                            rc->exec,
+                            rc->recipient,
+                            now - rc->last_status_change,
+                            rc->old_value, rc->value,
+                            rc->status, status,
+                            rc->source, rc->units, rc->info, rc->delay_last);
                     rc->last_status_change = now;
                     rc->status = status;
                 }

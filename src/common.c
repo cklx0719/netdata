@@ -195,20 +195,27 @@ void freez(void *ptr) {
 // ----------------------------------------------------------------------------
 // time functions
 
-inline unsigned long long timeval_usec(struct timeval *tv) {
-    return tv->tv_sec * 1000000ULL + tv->tv_usec;
+inline unsigned long long timespec_usec(struct timespec *tv) {
+    return tv->tv_sec * 1000000ULL + tv->tv_nsec / 1000ULL;
 }
 
 // time(NULL) in nanoseconds
-inline unsigned long long time_usec(void) {
-    struct timeval now;
-    gettimeofday(&now, NULL);
-    return timeval_usec(&now);
+inline unsigned long long time_nsec(void) {
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    return now.tv_sec * 1000000000ULL + now.tv_nsec;
 }
 
-inline unsigned long long usec_dt(struct timeval *now, struct timeval *old) {
-    unsigned long long tv1 = timeval_usec(now);
-    unsigned long long tv2 = timeval_usec(old);
+// time(NULL) in microseconds
+inline unsigned long long time_usec(void) {
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    return now.tv_sec * 1000000ULL + now.tv_nsec / 1000ULL;
+}
+
+inline unsigned long long usec_dt(struct timespec *now, struct timespec *old) {
+    unsigned long long tv1 = timespec_usec(now);
+    unsigned long long tv2 = timespec_usec(old);
     return (tv1 > tv2) ? (tv1 - tv2) : (tv2 - tv1);
 }
 

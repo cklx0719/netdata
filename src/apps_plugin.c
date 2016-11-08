@@ -2146,18 +2146,17 @@ double utime_fix_ratio = 1.0, stime_fix_ratio = 1.0, gtime_fix_ratio = 1.0, cuti
 double minflt_fix_ratio = 1.0, majflt_fix_ratio = 1.0, cminflt_fix_ratio = 1.0, cmajflt_fix_ratio = 1.0;
 
 unsigned long long send_resource_usage_to_netdata() {
-    static struct timeval last = { 0, 0 };
+    static unsigned long long last = 0;
     static struct rusage me_last;
 
-    struct timeval now;
+    unsigned long long now = time_usec();
     struct rusage me;
 
     unsigned long long usec;
     unsigned long long cpuuser;
     unsigned long long cpusyst;
 
-    if(!last.tv_sec) {
-        gettimeofday(&last, NULL);
+    if(!last) {
         getrusage(RUSAGE_SELF, &me_last);
 
         // the first time, give a zero to allow
@@ -2168,16 +2167,15 @@ unsigned long long send_resource_usage_to_netdata() {
         cpusyst = 0;
     }
     else {
-        gettimeofday(&now, NULL);
         getrusage(RUSAGE_SELF, &me);
 
-        usec = usec_dt(&now, &last);
+        usec = now - last;
         cpuuser = me.ru_utime.tv_sec * 1000000ULL + me.ru_utime.tv_usec;
         cpusyst = me.ru_stime.tv_sec * 1000000ULL + me.ru_stime.tv_usec;
 
-        memmove(&last, &now, sizeof(struct timeval));
         memmove(&me_last, &me, sizeof(struct rusage));
     }
+    last = now;
 
     buffer_sprintf(output,
         "BEGIN netdata.apps_cpu %llu\n"

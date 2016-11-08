@@ -26,16 +26,16 @@ void *cpuidlejitter_main(void *ptr)
         rrddim_add(st, "jitter", NULL, 1, 1, RRDDIM_ABSOLUTE);
     }
 
-    struct timeval before, after;
+    struct timespec before, after;
     unsigned long long counter;
     for(counter = 0; 1 ;counter++) {
         unsigned long long usec = 0, susec = 0;
 
         while(susec < (rrd_update_every * 1000000ULL)) {
 
-            gettimeofday(&before, NULL);
+            netdata_gettime(&before);
             usleep(sleep_ms * 1000);
-            gettimeofday(&after, NULL);
+            netdata_gettime(&after);
 
             // calculate the time it took for a full loop
             usec = usec_dt(&after, &before);

@@ -134,7 +134,7 @@ struct rrddim {
     int updated;                                    // set to 0 after each calculation, to 1 after each collected value
                                                     // we use this to detect that a dimension is not updated
 
-    struct timeval last_collected_time;             // when was this dimension last updated
+    struct timespec last_collected_time;             // when was this dimension last updated
                                                     // this is actual date time we updated the last_collected_value
                                                     // THIS IS DIFFERENT FROM THE SAME MEMBER OF RRDSET
 
@@ -246,8 +246,8 @@ struct rrdset {
 
     unsigned long long usec_since_last_update;      // the time in microseconds since the last collection of data
 
-    struct timeval last_updated;                    // when this data set was last updated (updated every time the rrd_stats_done() function)
-    struct timeval last_collected_time;             // when did this data set last collected values
+    struct timespec last_updated;                    // when this data set was last updated (updated every time the rrd_stats_done() function)
+    struct timespec last_collected_time;             // when did this data set last collected values
 
     total_number collected_total;                   // used internally to calculate percentages
     total_number last_collected_total;              // used internally to calculate percentages

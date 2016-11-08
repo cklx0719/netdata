@@ -935,7 +935,7 @@ int run_test(struct test *test)
         // align the first entry to second boundary
         if(!c) {
             fprintf(stderr, "    > %s: fixing first collection time to be %llu microseconds to second boundary\n", test->name, test->feed[c].microseconds);
-            rd->last_collected_time.tv_usec = st->last_collected_time.tv_usec = st->last_updated.tv_usec = test->feed[c].microseconds;
+            rd->last_collected_time.tv_nsec = st->last_collected_time.tv_nsec = st->last_updated.tv_nsec = test->feed[c].microseconds * 1000;
             // time_start = st->last_collected_time.tv_sec;
         }
     }
@@ -1081,8 +1081,8 @@ int unit_test(long delay, long shift)
         if(do_absi) rrddim_set(st, "percentage-of-incremental-row", i);
 
         if(!c) {
-            gettimeofday(&st->last_collected_time, NULL);
-            st->last_collected_time.tv_usec = shift;
+            netdata_gettime(&st->last_collected_time);
+            st->last_collected_time.tv_nsec = shift * 1000;
         }
 
         // prevent it from deleting the dimensions

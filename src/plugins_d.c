@@ -91,7 +91,7 @@ void *pluginsd_worker_thread(void *arg)
 
 #ifdef DETACH_PLUGINS_FROM_NETDATA
     unsigned long long usec = 0, susec = 0;
-    struct timeval last = {0, 0} , now = {0, 0};
+    struct timespec last = {0, 0} , now = {0, 0};
 #endif
 
     char *words[MAX_WORDS] = { NULL };
@@ -342,7 +342,7 @@ void *pluginsd_worker_thread(void *arg)
             else if(likely(hash == STOPPING_WAKE_ME_UP_PLEASE_HASH && !strcmp(s, "STOPPING_WAKE_ME_UP_PLEASE"))) {
                 error("PLUGINSD: '%s' (pid %d) called STOPPING_WAKE_ME_UP_PLEASE.", cd->fullfilename, cd->pid);
 
-                gettimeofday(&now, NULL);
+                netdata_gettime(&now);
                 if(unlikely(!usec && !susec)) {
                     // our first run
                     susec = cd->rrd_update_every * 1000000ULL;
@@ -358,7 +358,7 @@ void *pluginsd_worker_thread(void *arg)
                 error("PLUGINSD: %s sleeping for %llu. Will kill with SIGCONT pid %d to wake it up.\n", cd->fullfilename, susec, cd->pid);
                 usleep(susec);
                 killpid(cd->pid, SIGCONT);
-                memmove(&last, &now, sizeof(struct timeval));
+                memmove(&last, &now, sizeof(struct timespec));
                 break;
             }
 #endif
